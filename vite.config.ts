@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    proxy: {
+      "/api/swap/paraswap": {
+        target: "https://api.paraswap.io",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/swap\/paraswap/, ""),
+      },
+    },
   },
   optimizeDeps: {
     exclude: ["@consenlabs/tcx-wasm"],

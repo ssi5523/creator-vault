@@ -1,4 +1,4 @@
-export type NetworkId = "eth" | "bsc" | "base" | "sepolia";
+export type NetworkId = "eth" | "bsc" | "base" | "arbitrum" | "sepolia";
 
 export interface NetworkConfig {
   id: NetworkId;
@@ -9,15 +9,15 @@ export interface NetworkConfig {
   rpcUrl: string;
   explorer: string;
   nativeSymbol: string;
-  /** TokenCore 链标识（EVM 系均用 ETHEREUM 签名） */
   tcxChain: "ETHEREUM";
   color: string;
+  paraswapId: number;
 }
 
 export const NETWORKS: Record<NetworkId, NetworkConfig> = {
   eth: {
     id: "eth",
-    label: "Ethereum 主网",
+    label: "Ethereum",
     shortLabel: "ETH",
     chainId: "1",
     tcxNetwork: "MAINNET",
@@ -26,6 +26,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     nativeSymbol: "ETH",
     tcxChain: "ETHEREUM",
     color: "#627eea",
+    paraswapId: 1,
   },
   bsc: {
     id: "bsc",
@@ -38,10 +39,11 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     nativeSymbol: "BNB",
     tcxChain: "ETHEREUM",
     color: "#f0b90b",
+    paraswapId: 56,
   },
   base: {
     id: "base",
-    label: "Base 主网",
+    label: "Base",
     shortLabel: "Base",
     chainId: "8453",
     tcxNetwork: "MAINNET",
@@ -50,6 +52,20 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     nativeSymbol: "ETH",
     tcxChain: "ETHEREUM",
     color: "#0052ff",
+    paraswapId: 8453,
+  },
+  arbitrum: {
+    id: "arbitrum",
+    label: "Arbitrum One",
+    shortLabel: "ARB",
+    chainId: "42161",
+    tcxNetwork: "MAINNET",
+    rpcUrl: "https://arb1.arbitrum.io/rpc",
+    explorer: "https://arbiscan.io",
+    nativeSymbol: "ETH",
+    tcxChain: "ETHEREUM",
+    color: "#28a0f0",
+    paraswapId: 42161,
   },
   sepolia: {
     id: "sepolia",
@@ -62,12 +78,9 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     nativeSymbol: "ETH",
     tcxChain: "ETHEREUM",
     color: "#8b9dc3",
+    paraswapId: 11155111,
   },
 };
-
-/** Solana 需 TokenCore 单独链接支持，当前 tcx-wasm 未包含 */
-export const SOLANA_NOTE =
-  "Solana（SOL）需专用签名模块。当前版本基于 TokenCore 支持 EVM 链（ETH / BSC / Base）。";
 
 export const DEFAULT_NETWORK: NetworkId = "sepolia";
 
@@ -76,3 +89,5 @@ export function getNetwork(id: NetworkId): NetworkConfig {
 }
 
 export const EVM_NETWORK_IDS = Object.keys(NETWORKS) as NetworkId[];
+
+export const MAINNET_IDS: NetworkId[] = ["eth", "bsc", "base", "arbitrum"];

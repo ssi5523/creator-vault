@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SOLANA_NOTE } from "../lib/networks";
+import { MAINNET_IDS } from "../lib/networks";
 import {
   clearTransferPin,
   hasTransferPin,
@@ -112,9 +112,11 @@ export default function SecurityPanel({
       <div className="card card-muted">
         <h4>多链说明</h4>
         <p className="desc">
-          <strong>已支持（TokenCore 签名）：</strong> Ethereum、BNB Smart Chain、Base，及 Sepolia 测试网。
+          <strong>DeFi 主网（TokenCore 签名）：</strong> {MAINNET_IDS.join(" · ")}；测试网 Sepolia。
         </p>
-        <p className="desc sol-note">{SOLANA_NOTE}</p>
+        <p className="desc sol-note">
+          授权 / 兑换 / 质押 / 投票均经二次确认与场景化风险提示；交互历史仅存本机。
+        </p>
       </div>
 
       <div className="card card-muted">

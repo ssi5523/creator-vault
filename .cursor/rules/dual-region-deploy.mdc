@@ -18,7 +18,7 @@ Every release must work **both internationally and in mainland China** without V
 | Region | Host | URL |
 |--------|------|-----|
 | International | Vercel (linked to `main`) | `https://<project>.vercel.app` |
-| China / domestic | GitHub Pages (`gh-pages` branch) | `https://zxc6778.github.io/creator-vault/` |
+| China / domestic | GitHub Pages (`gh-pages` branch) | `https://ssi5523.github.io/creator-vault/` |
 
 **Never** use `cdn.jsdelivr.net/gh/...` for HTML — it serves pages as plain text (looks like raw code).
 

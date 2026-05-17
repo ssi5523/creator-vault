@@ -2,7 +2,7 @@
 param(
   [string]$Commit = "dffe718",
   [string]$Parent = "07a3f2e2bd5fa1a3cf5dc9d5a91ba20a3e9b2e3e",
-  [string]$Repo = "zxc6778/creator-vault",
+  [string]$Repo = "ssi5523/creator-vault",
   [string]$Branch = "main"
 )
 

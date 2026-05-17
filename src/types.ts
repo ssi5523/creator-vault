@@ -1,1 +1,10 @@
-export type AppView = "dashboard" | "transfer" | "security" | "wallet";
+export type AppView =
+  | "dashboard"
+  | "swap"
+  | "approve"
+  | "stake"
+  | "vote"
+  | "transfer"
+  | "history"
+  | "security"
+  | "wallet";

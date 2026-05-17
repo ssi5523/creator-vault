@@ -1,6 +1,7 @@
 import type { NetworkId } from "./networks";
-import type { SwapTxPayload } from "./tokenCore";
-import { getTokenById, paraswapNetworkId, type SwapToken } from "./tokens";
+import { getNetwork } from "./networks";
+import type { ContractTxPayload } from "./tokenCore";
+import { getSwapTokens, getTokenById, paraswapNetworkId, type SwapToken } from "./tokens";
 
 const SWAP_API = "/api/swap/paraswap";
 
@@ -83,13 +84,14 @@ export async function fetchSwapQuote(
 
 export async function buildSwapTransaction(
   networkId: NetworkId,
+  quote: SwapQuote,
   from: SwapToken,
   to: SwapToken,
-  quote: SwapQuote,
   userAddress: string,
   slippageBps = 100
-): Promise<SwapTxPayload> {
+): Promise<ContractTxPayload> {
   const net = paraswapNetworkId(networkId);
+  const chainId = Number(getNetwork(networkId).chainId);
   const res = await fetch(`${SWAP_API}/transactions/${net}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,7 +102,7 @@ export async function buildSwapTransaction(
       destAmount: quote.destAmount,
       priceRoute: quote.priceRoute,
       userAddress,
-      partner: "easywallet",
+      partner: "defivault",
       slippage: slippageBps,
     }),
   });
@@ -110,14 +112,16 @@ export async function buildSwapTransaction(
     throw new Error(`构建交易失败 (${res.status})${err ? `: ${err.slice(0, 120)}` : ""}`);
   }
 
-  return res.json() as Promise<SwapTxPayload>;
+  const tx = (await res.json()) as ContractTxPayload;
+  return { ...tx, chainId: tx.chainId ?? chainId };
 }
 
 export function pickCounterToken(networkId: NetworkId, fromId: string): SwapToken | undefined {
-  const prefer = fromId === "eth" ? ["usdc", "usdt"] : ["eth"];
+  const tokens = getSwapTokens(networkId);
+  const prefer = fromId.includes("eth") || fromId === "bnb" ? ["usdc", "usdt"] : ["eth", "bnb"];
   for (const id of prefer) {
     const t = getTokenById(networkId, id);
     if (t) return t;
   }
-  return undefined;
+  return tokens.find((t) => t.id !== fromId);
 }

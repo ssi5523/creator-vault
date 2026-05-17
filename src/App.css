@@ -1,4 +1,5 @@
-.vault-app {
+.vault-app,
+.defi-app {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
@@ -544,8 +545,149 @@ button:disabled {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+.defi-mark {
+  background: linear-gradient(135deg, #00d4aa, #3d8bfd);
+  box-shadow: 0 0 24px rgba(0, 212, 170, 0.35);
+}
+
+.hero-card {
+  background: linear-gradient(145deg, rgba(0, 212, 170, 0.08), rgba(61, 139, 253, 0.06));
+  border-color: rgba(0, 212, 170, 0.25);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.stat strong {
+  font-size: 1.1rem;
+}
+
+.yield-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.yield-card {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.yield-card header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.chain-badge,
+.scenario-tag,
+.type-badge,
+.risk-tag {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(61, 139, 253, 0.2);
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.yield-balance {
+  font-size: 1.25rem;
+  margin: 0.25rem 0;
+}
+
+.yield-card footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.quote-line {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 212, 170, 0.08);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.flow-line {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-item {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.history-action {
+  margin: 0.35rem 0;
+  font-weight: 600;
+}
+
+.raw-tx {
+  display: block;
+  word-break: break-all;
+  font-size: 0.7rem;
+  margin-top: 0.35rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
 @media (max-width: 900px) {
-  .vault-app {
+  .vault-app,
+  .defi-app {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .field-row {
     grid-template-columns: 1fr;
   }
 

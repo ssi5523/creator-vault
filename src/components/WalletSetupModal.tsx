@@ -82,6 +82,11 @@ export default function WalletSetupModal({
       return;
     }
 
+    if (loading) {
+      setError("TokenCore WASM 仍在加载，请稍候再试");
+      return;
+    }
+
     setBusy(true);
     try {
       if (mode === "unlock") {
@@ -96,8 +101,8 @@ export default function WalletSetupModal({
       } else {
         const session = await createPasswordWallet(
           password,
-          mnemonic.trim() || undefined,
-          network
+          network,
+          mnemonic.trim() || undefined
         );
         onConnected(session, password, mnemonic.trim() || undefined);
       }

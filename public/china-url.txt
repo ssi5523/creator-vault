@@ -1,10 +1,10 @@
 VaultGuard — 访问地址
 
 【在线演示】GitHub Pages（zxc6778）
-https://zxc6778.github.io/creator-vault/
+https://ssi5523.github.io/creator-vault/
 
 【源码仓库】
-https://github.com/zxc6778/creator-vault
+https://github.com/ssi5523/creator-vault
 
 本地开发：npm install && npm run dev → http://localhost:5173
 更新 Pages：npm run deploy:china

@@ -1,5 +1,6 @@
 import {
   broadcastRawTx,
+  estimateGas,
   fetchGasPrice,
   fetchNonce,
   parseNativeAmount,
@@ -16,10 +17,10 @@ import {
   sign_tx,
 } from "./tcxWasm";
 
-const STORAGE_KEY = "vaultguard-keystore";
-const NETWORK_KEY = "vaultguard-network";
-const BACKUP_KEY = "vaultguard-backup-done";
-const PIN_KEY = "vaultguard-transfer-pin";
+const STORAGE_KEY = "defivault-keystore";
+const NETWORK_KEY = "defivault-network";
+const BACKUP_KEY = "defivault-backup-done";
+const PIN_KEY = "defivault-transfer-pin";
 
 export interface EthAccount {
   address: string;
@@ -41,13 +42,48 @@ export interface SignTxResult {
   txHash?: string;
 }
 
+export interface ContractTxPayload {
+  to: string;
+  from?: string;
+  value: string;
+  data: string;
+  gas: string;
+  gasPrice?: string;
+  chainId: number;
+}
+
+function parseTcxJson(raw: string, fallback: string): string {
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) throw new Error(fallback);
+  if (trimmed.startsWith("{") && trimmed.includes('"error"')) {
+    try {
+      const obj = JSON.parse(trimmed) as { error?: string };
+      if (obj.error) throw new Error(obj.error);
+    } catch (e) {
+      if (e instanceof Error && e.message !== fallback) throw e;
+    }
+  }
+  return trimmed;
+}
+
 export async function ensureTcx(): Promise<void> {
   await initTcxWasm();
 }
 
+const LEGACY_KEYS = ["vaultguard-keystore", "easy-wallet-keystore"];
+
 export function loadStoredKeystore(): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const current = localStorage.getItem(STORAGE_KEY);
+    if (current) return current;
+    for (const key of LEGACY_KEYS) {
+      const legacy = localStorage.getItem(key);
+      if (legacy) {
+        localStorage.setItem(STORAGE_KEY, legacy);
+        return legacy;
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -88,9 +124,7 @@ export function hasTransferPin(): boolean {
 }
 
 export function setTransferPin(pin: string): void {
-  if (!/^\d{6}$/.test(pin)) {
-    throw new Error("转账 PIN 须为 6 位数字");
-  }
+  if (!/^\d{6}$/.test(pin)) throw new Error("PIN 须为 6 位数字");
   localStorage.setItem(PIN_KEY, pin);
 }
 
@@ -129,14 +163,14 @@ export async function exportWalletMnemonic(
       JSON.stringify({ keystoreJson: session.keystoreJson, key: password })
     )
   ) as { mnemonic: string };
-  if (!mnemonic) throw new Error("无法导出助记词，请检查密码");
+  if (!mnemonic) throw new Error("无法导出助记词");
   return mnemonic;
 }
 
 export async function createPasswordWallet(
   password: string,
-  mnemonic?: string,
-  network: NetworkConfig
+  network: NetworkConfig,
+  mnemonic?: string
 ): Promise<WalletSession> {
   await ensureTcx();
   const param: Record<string, string> = {
@@ -144,7 +178,8 @@ export async function createPasswordWallet(
     network: network.tcxNetwork,
   };
   if (mnemonic?.trim()) param.mnemonic = mnemonic.trim();
-  const keystoreJson = create_keystore(JSON.stringify(param));
+  const raw = create_keystore(JSON.stringify(param));
+  const keystoreJson = parseTcxJson(raw, "创建 Keystore 失败");
   return unlockKeystore(keystoreJson, password, network, true);
 }
 
@@ -173,9 +208,7 @@ export async function unlockKeystore(
   ) as EthAccount[];
 
   const eth = accounts[0];
-  if (!eth?.address) {
-    throw new Error("无法派生地址，请检查密码或助记词");
-  }
+  if (!eth?.address) throw new Error("无法派生地址");
 
   if (persist) saveKeystore(keystoreJson);
 
@@ -190,25 +223,32 @@ export function disconnectWallet(): void {
   clear_cached_keystore();
 }
 
-export async function signNativeTransfer(
+export async function signContractTx(
   session: WalletSession,
   password: string,
   network: NetworkConfig,
-  to: string,
-  amount: string
+  tx: ContractTxPayload
 ): Promise<SignTxResult> {
   await ensureTcx();
   cache_keystore(session.keystoreJson);
 
-  const toAddr = to.trim();
-  if (!/^0x[a-fA-F0-9]{40}$/.test(toAddr)) {
-    throw new Error("收款地址格式不正确");
+  const to = tx.to.trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
+    throw new Error("合约地址格式不正确");
   }
 
-  const valueWei = parseNativeAmount(amount);
+  const data = tx.data.startsWith("0x") ? tx.data : `0x${tx.data}`;
+  const value = String(tx.value || "0");
   const nonce = await fetchNonce(network, session.address);
-  const gasPrice = await fetchGasPrice(network);
-  const gasLimit = "21000";
+  const gasPrice = tx.gasPrice ?? (await fetchGasPrice(network));
+  let gasLimit = tx.gas;
+  if (!gasLimit) {
+    try {
+      gasLimit = await estimateGas(network, session.address, to, data, value);
+    } catch {
+      gasLimit = "300000";
+    }
+  }
 
   const result = JSON.parse(
     sign_tx(
@@ -218,10 +258,11 @@ export async function signNativeTransfer(
         derivationPath: session.derivationPath,
         input: {
           nonce,
-          gasPrice,
-          gasLimit,
-          to: toAddr,
-          value: valueWei.toString(),
+          gasPrice: String(gasPrice),
+          gasLimit: String(gasLimit),
+          to,
+          value,
+          data,
           chainId: network.chainId,
         },
       })
@@ -234,21 +275,51 @@ export async function signNativeTransfer(
   return result;
 }
 
+export async function signAndBroadcastContract(
+  session: WalletSession,
+  password: string,
+  network: NetworkConfig,
+  tx: ContractTxPayload
+): Promise<{ txHash: string; rawTx: string }> {
+  const signed = await signContractTx(session, password, network, tx);
+  const rawTx = extractRawTransaction(signed);
+  const txHash = await broadcastRawTx(network, rawTx);
+  return { txHash, rawTx };
+}
+
+export async function signNativeTransfer(
+  session: WalletSession,
+  password: string,
+  network: NetworkConfig,
+  to: string,
+  amount: string
+): Promise<SignTxResult> {
+  const valueWei = parseNativeAmount(amount);
+  return signContractTx(session, password, network, {
+    to: to.trim(),
+    value: valueWei.toString(),
+    data: "0x",
+    gas: "21000",
+    chainId: Number(network.chainId),
+  });
+}
+
 export async function signAndBroadcastTransfer(
   session: WalletSession,
   password: string,
   network: NetworkConfig,
   to: string,
   amount: string
-): Promise<string> {
+): Promise<{ txHash: string; rawTx: string }> {
   const signed = await signNativeTransfer(session, password, network, to, amount);
-  const raw = extractRawTransaction(signed);
-  return broadcastRawTx(network, raw);
+  const rawTx = extractRawTransaction(signed);
+  const txHash = await broadcastRawTx(network, rawTx);
+  return { txHash, rawTx };
 }
 
 export function extractRawTransaction(result: SignTxResult): string {
   const raw =
     result.signedTransaction || result.rawTransaction || result.signature || "";
-  if (!raw) throw new Error("未获取到已签名交易数据");
+  if (!raw) throw new Error("未获取到已签名交易");
   return raw.startsWith("0x") ? raw : `0x${raw}`;
 }

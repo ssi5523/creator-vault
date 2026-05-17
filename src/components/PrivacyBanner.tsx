@@ -5,10 +5,9 @@ export default function PrivacyBanner() {
         🔒
       </span>
       <div>
-        <strong>完全本地 · 零上报</strong>
+        <strong>DeFi 本地签名 · 零托管</strong>
         <p>
-          无私钥注册、无云端备份。助记词与 Keystore 仅存于本浏览器，签名由 TokenCore WASM
-          在设备内完成。
+          授权、兑换、质押、投票均由 TokenCore WASM 在设备内签名；交互记录不上传服务器。
         </p>
       </div>
     </aside>

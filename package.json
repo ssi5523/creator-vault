@@ -1,9 +1,9 @@
 {
-  "name": "vaultguard-wallet",
+  "name": "defivault-wallet",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "VaultGuard — 基于 TokenCore 的安全自托管网页钱包",
+  "description": "DeFiVault — 基于 TokenCore 的 DeFi 场景自托管网页钱包",
   "scripts": {
     "dev": "vite",
     "start": "vite",

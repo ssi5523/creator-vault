@@ -66,3 +66,27 @@ export function explorerTxUrl(network: NetworkConfig, hash: string): string {
 export function explorerAddressUrl(network: NetworkConfig, address: string): string {
   return `${network.explorer}/address/${address}`;
 }
+
+export async function ethCall(
+  network: NetworkConfig,
+  to: string,
+  data: string,
+  from?: string
+): Promise<string> {
+  const param: Record<string, string> = { to, data };
+  if (from) param.from = from;
+  return rpcCall<string>(network, "eth_call", [param, "latest"]);
+}
+
+export async function estimateGas(
+  network: NetworkConfig,
+  from: string,
+  to: string,
+  data: string,
+  value = "0"
+): Promise<string> {
+  const hex = await rpcCall<string>(network, "eth_estimateGas", [
+    { from, to, data, value: value === "0" ? "0x0" : `0x${BigInt(value).toString(16)}` },
+  ]);
+  return BigInt(hex).toString();
+}

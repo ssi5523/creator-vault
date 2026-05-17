@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import BackupMnemonicModal from "./components/BackupMnemonicModal";
+import DashboardPanel from "./components/DashboardPanel";
+import HistoryPanel from "./components/HistoryPanel";
+import ApprovePanel from "./components/ApprovePanel";
 import PrivacyBanner from "./components/PrivacyBanner";
 import SecurityPanel from "./components/SecurityPanel";
+import StakePanel from "./components/StakePanel";
+import SwapDeFiPanel from "./components/SwapDeFiPanel";
 import TransferPanel from "./components/TransferPanel";
+import VotePanel from "./components/VotePanel";
 import WalletSetupModal from "./components/WalletSetupModal";
 import { fetchBalance, formatNativeAmount, explorerAddressUrl } from "./lib/rpc";
 import {
   DEFAULT_NETWORK,
   EVM_NETWORK_IDS,
   NETWORKS,
-  SOLANA_NOTE,
   getNetwork,
   type NetworkId,
 } from "./lib/networks";
+import { clearHistory } from "./lib/history";
 import {
   clearStoredKeystore,
   disconnectWallet,
@@ -31,11 +37,21 @@ function shortAddress(addr: string) {
 }
 
 function parseNetworkId(raw: string | null): NetworkId {
-  if (raw && EVM_NETWORK_IDS.includes(raw as NetworkId)) {
-    return raw as NetworkId;
-  }
+  if (raw && EVM_NETWORK_IDS.includes(raw as NetworkId)) return raw as NetworkId;
   return DEFAULT_NETWORK;
 }
+
+const NAV: { id: AppView; label: string }[] = [
+  { id: "dashboard", label: "资产" },
+  { id: "swap", label: "兑换" },
+  { id: "approve", label: "授权" },
+  { id: "stake", label: "质押" },
+  { id: "vote", label: "投票" },
+  { id: "transfer", label: "转账" },
+  { id: "history", label: "历史" },
+  { id: "security", label: "安全" },
+  { id: "wallet", label: "钱包" },
+];
 
 export default function App() {
   const [tcxLoading, setTcxLoading] = useState(true);
@@ -44,16 +60,16 @@ export default function App() {
     parseNetworkId(loadStoredNetwork())
   );
   const network = getNetwork(networkId);
-
   const [session, setSession] = useState<WalletSession | null>(null);
   const passwordRef = useRef("");
   const [walletOpen, setWalletOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [view, setView] = useState<AppView>("dashboard");
-  const [balance, setBalance] = useState<string>("—");
+  const [balance, setBalance] = useState("—");
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [backupDone, setBackupDone] = useState(isBackupConfirmed);
+  const [yieldTick, setYieldTick] = useState(0);
 
   const connected = !!session;
 
@@ -84,8 +100,8 @@ export default function App() {
 
   useEffect(() => {
     refreshBalance();
-    const timer = setInterval(refreshBalance, 20_000);
-    return () => clearInterval(timer);
+    const t = setInterval(refreshBalance, 25_000);
+    return () => clearInterval(t);
   }, [refreshBalance]);
 
   useEffect(() => {
@@ -93,77 +109,61 @@ export default function App() {
   }, [networkId]);
 
   useEffect(() => {
-    if (!tcxReady || session) return;
-    if (loadStoredKeystore()) setWalletOpen(true);
+    if (tcxReady && !session && loadStoredKeystore()) setWalletOpen(true);
   }, [tcxReady, session]);
 
   const handleConnected = useCallback(
     (s: WalletSession, password: string) => {
       passwordRef.current = password;
       setSession(s);
-      showToast("钱包已解锁 · 私钥仅存于本机");
-      if (!isBackupConfirmed()) {
-        setBackupOpen(true);
-      } else {
-        setBackupDone(true);
-      }
+      showToast("钱包已解锁 · DeFi 签名由 TokenCore 本地完成");
+      if (!isBackupConfirmed()) setBackupOpen(true);
+      else setBackupDone(true);
     },
     [showToast]
   );
-
-  const handleNetworkChange = (id: NetworkId) => {
-    setNetworkId(id);
-    showToast(`已切换至 ${NETWORKS[id].label}`);
-  };
 
   const disconnect = () => {
     disconnectWallet();
     setSession(null);
     passwordRef.current = "";
     setBalance("—");
-    showToast("已断开钱包");
+    showToast("已断开");
   };
 
   const clearWallet = () => {
-    if (!confirm("将删除本机 Keystore，请确认已离线备份助记词。此操作不可撤销。")) return;
+    if (!confirm("将删除本机 Keystore 与历史，请确认已备份助记词。")) return;
     clearStoredKeystore();
+    clearHistory();
     disconnect();
     setBackupDone(false);
-    showToast("本地钱包数据已清除");
+    showToast("本地数据已清除");
   };
 
-  const navItems: { id: AppView; label: string }[] = [
-    { id: "dashboard", label: "总览" },
-    { id: "transfer", label: "转账" },
-    { id: "security", label: "安全" },
-    { id: "wallet", label: "钱包" },
-  ];
-
   return (
-    <div className="app vault-app">
+    <div className="app defi-app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden />
+          <div className="brand-mark defi-mark" />
           <div>
-            <h1>VaultGuard</h1>
-            <p>自托管安全钱包</p>
+            <h1>DeFiVault</h1>
+            <p>场景化自托管 · TokenCore</p>
           </div>
         </div>
-        <nav className="side-nav" aria-label="主导航">
-          {navItems.map((item) => (
+        <nav className="side-nav">
+          {NAV.map((n) => (
             <button
-              key={item.id}
+              key={n.id}
               type="button"
-              className={view === item.id ? "active" : ""}
-              onClick={() => setView(item.id)}
+              className={view === n.id ? "active" : ""}
+              onClick={() => setView(n.id)}
             >
-              {item.label}
+              {n.label}
             </button>
           ))}
         </nav>
         <PrivacyBanner />
         <p className="tcx-foot">
-          Powered by{" "}
           <a href="https://github.com/consenlabs/token-core-monorepo" target="_blank" rel="noreferrer">
             TokenCore
           </a>
@@ -173,22 +173,13 @@ export default function App() {
       <div className="app-body">
         <header className="topbar">
           <div className="topbar-title">
-            <h2>
-              {view === "dashboard" && "资产总览"}
-              {view === "transfer" && "安全转账"}
-              {view === "security" && "安全中心"}
-              {view === "wallet" && "钱包管理"}
-            </h2>
-            {tcxReady && <span className="badge badge-ok">TokenCore 已就绪</span>}
-            {!tcxReady && !tcxLoading && (
-              <span className="badge badge-warn">WASM 未加载</span>
-            )}
+            <h2>DeFi 安全交互</h2>
+            {tcxReady && <span className="badge badge-ok">WASM 就绪</span>}
           </div>
           <select
             className="network-select"
             value={networkId}
-            onChange={(e) => handleNetworkChange(e.target.value as NetworkId)}
-            aria-label="选择网络"
+            onChange={(e) => setNetworkId(e.target.value as NetworkId)}
           >
             {Object.values(NETWORKS).map((n) => (
               <option key={n.id} value={n.id}>
@@ -200,113 +191,100 @@ export default function App() {
 
         <main className="main">
           {!backupDone && connected && (
-            <div className="alert-banner" role="alert">
-              <strong>请尽快离线备份助记词</strong>
+            <div className="alert-banner">
+              <strong>请离线备份助记词后再进行 DeFi 授权</strong>
               <button type="button" className="btn-outline btn-sm" onClick={() => setBackupOpen(true)}>
-                立即备份
+                备份
               </button>
             </div>
           )}
 
           {view === "dashboard" && (
             <>
-              <section className="card balance-card">
-                <p className="label">账户余额 · {network.shortLabel}</p>
+              <section className="card hero-card">
                 {connected && session ? (
                   <>
-                    <a
-                      className="address"
-                      href={explorerAddressUrl(network, session.address)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <p className="label">{network.label}</p>
+                    <a className="address" href={explorerAddressUrl(network, session.address)} target="_blank" rel="noreferrer">
                       {shortAddress(session.address)}
                     </a>
                     <p className="balance">
-                      {balanceLoading ? "查询中…" : balance}{" "}
-                      <span>{network.nativeSymbol}</span>
+                      {balanceLoading ? "…" : balance} <span>{network.nativeSymbol}</span>
                     </p>
-                    <button
-                      type="button"
-                      className="btn-outline btn-sm"
-                      onClick={refreshBalance}
-                      disabled={balanceLoading}
-                    >
-                      刷新余额
+                    <button type="button" className="btn-outline btn-sm" onClick={refreshBalance}>
+                      刷新
                     </button>
                   </>
                 ) : (
                   <>
-                    <p className="balance muted">未连接钱包</p>
-                    <button
-                      type="button"
-                      className="btn-primary btn-block btn-lg"
-                      onClick={() => setWalletOpen(true)}
-                      disabled={tcxLoading}
-                    >
-                      {tcxLoading ? "加载 TokenCore…" : "创建 / 导入钱包"}
+                    <p className="balance muted">连接钱包以管理多链 DeFi 资产</p>
+                    <button type="button" className="btn-primary btn-lg" onClick={() => setWalletOpen(true)} disabled={tcxLoading}>
+                      {tcxLoading ? "加载 WASM…" : "连接钱包"}
                     </button>
                   </>
                 )}
               </section>
-
-              <section className="card chains-card">
-                <h3>多链支持</h3>
-                <div className="chain-grid">
-                  {(["eth", "bsc", "base"] as const).map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      className={`chain-chip ${networkId === id ? "active" : ""}`}
-                      style={{ borderColor: NETWORKS[id].color }}
-                      onClick={() => handleNetworkChange(id)}
-                    >
-                      {NETWORKS[id].shortLabel}
-                    </button>
-                  ))}
-                  <span className="chain-chip disabled" title={SOLANA_NOTE}>
-                    SOL（暂不支持签名）
-                  </span>
-                </div>
-                <p className="desc">{SOLANA_NOTE}</p>
-              </section>
-
-              <section className="card security-card">
-                <h3>自托管承诺</h3>
-                <ul>
-                  <li>助记词与私钥经 TokenCore 本地加密，全程不离开设备</li>
-                  <li>无注册、无 KYC、不上传任何个人或链上行为数据</li>
-                  <li>转账前进行合约地址与首次收款风险提示</li>
-                </ul>
-              </section>
+              {connected && session && (
+                <DashboardPanel
+                  address={session.address}
+                  network={network}
+                  nativeBalance={balance}
+                  key={yieldTick}
+                />
+              )}
             </>
           )}
 
-          {view === "transfer" && (
+          {connected && session ? (
             <>
-              {connected && session ? (
+              {view === "swap" && (
+                <SwapDeFiPanel
+                  session={session}
+                  network={network}
+                  networkId={networkId}
+                  onSuccess={() => {
+                    refreshBalance();
+                    setYieldTick((x) => x + 1);
+                    showToast("兑换已提交");
+                  }}
+                />
+              )}
+              {view === "approve" && (
+                <ApprovePanel session={session} network={network} networkId={networkId} />
+              )}
+              {view === "stake" && (
+                <StakePanel
+                  session={session}
+                  network={network}
+                  networkId={networkId}
+                  onSuccess={() => {
+                    setYieldTick((x) => x + 1);
+                    showToast("质押交易已提交");
+                  }}
+                />
+              )}
+              {view === "vote" && <VotePanel session={session} network={network} networkId={networkId} />}
+              {view === "transfer" && (
                 <TransferPanel
                   session={session}
                   network={network}
-                  onSuccess={() => {
-                    showToast("转账已广播");
-                    refreshBalance();
-                  }}
+                  networkId={networkId}
+                  onSuccess={refreshBalance}
                 />
-              ) : (
-                <section className="card">
-                  <h3>安全转账</h3>
-                  <p className="desc">请先创建或解锁钱包，再进行链上转账。</p>
-                  <button
-                    type="button"
-                    className="btn-primary btn-block btn-lg"
-                    onClick={() => setWalletOpen(true)}
-                  >
-                    连接钱包
-                  </button>
-                </section>
               )}
+              {view === "history" && <HistoryPanel networkId={networkId} />}
             </>
+          ) : (
+            view !== "dashboard" &&
+            view !== "security" &&
+            view !== "wallet" && (
+              <section className="card">
+                <p className="desc">请先连接钱包以使用 DeFi 功能。</p>
+                <button type="button" className="btn-primary btn-block" onClick={() => setWalletOpen(true)}>
+                  连接钱包
+                </button>
+              </section>
+            )
           )}
 
           {view === "security" && (
@@ -319,50 +297,38 @@ export default function App() {
 
           {view === "wallet" && (
             <section className="card wallet-settings">
-              <h3>钱包管理</h3>
+              <h3>钱包</h3>
               {connected && session ? (
                 <>
-                  <p className="full-address mono">{session.address}</p>
-                  <p className="desc">派生路径：{session.derivationPath}</p>
-                  <button
-                    type="button"
-                    className="btn-outline btn-block"
-                    onClick={() => setBackupOpen(true)}
-                  >
-                    离线备份助记词
+                  <p className="mono full-address">{session.address}</p>
+                  <button type="button" className="btn-outline btn-block" onClick={() => setBackupOpen(true)}>
+                    备份助记词
                   </button>
                   <button type="button" className="btn-secondary btn-block" onClick={disconnect}>
-                    断开连接
+                    断开
                   </button>
                   <button type="button" className="btn-danger btn-block" onClick={clearWallet}>
-                    清除本机钱包
+                    清除本机数据
                   </button>
                 </>
               ) : (
-                <>
-                  <p className="desc">尚未连接钱包</p>
-                  <button
-                    type="button"
-                    className="btn-primary btn-block btn-lg"
-                    onClick={() => setWalletOpen(true)}
-                  >
-                    创建 / 导入钱包
-                  </button>
-                </>
+                <button type="button" className="btn-primary btn-block" onClick={() => setWalletOpen(true)}>
+                  创建 / 导入
+                </button>
               )}
             </section>
           )}
         </main>
 
-        <nav className="bottom-nav" aria-label="移动端导航">
-          {navItems.map((item) => (
+        <nav className="bottom-nav">
+          {NAV.slice(0, 5).map((n) => (
             <button
-              key={item.id}
+              key={n.id}
               type="button"
-              className={view === item.id ? "active" : ""}
-              onClick={() => setView(item.id)}
+              className={view === n.id ? "active" : ""}
+              onClick={() => setView(n.id)}
             >
-              {item.label}
+              {n.label}
             </button>
           ))}
         </nav>
@@ -384,16 +350,12 @@ export default function App() {
           onDone={() => {
             setBackupOpen(false);
             setBackupDone(true);
-            showToast("助记词备份已完成");
+            showToast("备份完成");
           }}
         />
       )}
 
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

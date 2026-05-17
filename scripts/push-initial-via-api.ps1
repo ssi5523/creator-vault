@@ -1,6 +1,6 @@
 # Push entire HEAD to empty GitHub repo via api.github.com (when git HTTPS fails)
 param(
-  [string]$Repo = "zxc6778/creator-vault",
+  [string]$Repo = "ssi5523/creator-vault",
   [string]$Branch = "main",
   [string]$Ref = "HEAD",
   [string]$Parent = ""

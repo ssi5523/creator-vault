@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { appendHistory, updateHistoryTxHash } from "../lib/history";
 import { explorerTxUrl } from "../lib/rpc";
 import { analyzeTransferRisk, markRecipientKnown } from "../lib/security";
+import type { NetworkId } from "../lib/networks";
 import {
   hasTransferPin,
   signAndBroadcastTransfer,
@@ -13,10 +15,11 @@ import ConfirmTransferModal from "./ConfirmTransferModal";
 interface TransferPanelProps {
   session: WalletSession;
   network: NetworkConfig;
+  networkId: NetworkId;
   onSuccess?: (txHash: string) => void;
 }
 
-export default function TransferPanel({ session, network, onSuccess }: TransferPanelProps) {
+export default function TransferPanel({ session, network, networkId, onSuccess }: TransferPanelProps) {
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,13 +51,22 @@ export default function TransferPanel({ session, network, onSuccess }: TransferP
     setBusy(true);
     setError("");
     try {
-      const hash = await signAndBroadcastTransfer(
+      const hist = appendHistory({
+        networkId,
+        scenario: "transfer",
+        action: `转账 ${amount} ${network.nativeSymbol}`,
+        from: session.address,
+        to: to.trim(),
+        riskLevel: risk?.level,
+      });
+      const { txHash: hash, rawTx } = await signAndBroadcastTransfer(
         session,
         password,
         network,
         to.trim(),
         amount.trim()
       );
+      updateHistoryTxHash(hist.id, hash, rawTx);
       markRecipientKnown(to.trim());
       setTxHash(hash);
       setTo("");

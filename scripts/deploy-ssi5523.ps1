@@ -17,7 +17,7 @@ if ($login -notmatch "Logged in") {
   exit 1
 }
 
-gh repo view "$Owner/$Repo" 2>$null
+$null = gh repo view "$Owner/$Repo" 2>&1
 if ($LASTEXITCODE -ne 0) {
   Write-Host "Creating public repo $Owner/$Repo ..."
   gh repo create "$Owner/$Repo" --public --description "DeFiVault - TokenCore DeFi self-custody wallet"
